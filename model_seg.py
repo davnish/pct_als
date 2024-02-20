@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class Seg(nn.Module):
-    def __init__(self, args, part_num=9):
+    def __init__(self, args, part_num=8):
         super(Seg, self).__init__()
         self.part_num = part_num
         self.conv1 = nn.Conv1d(3, 128, kernel_size=1, bias=False)
@@ -84,7 +84,7 @@ class SA_Layer(nn.Module):
         x = x + x_r
         return x
 
-
+# @torch.no_grad()
 def get_loss(logics, labels):
     '''
     logics: B*one_hot*N

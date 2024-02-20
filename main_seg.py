@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 from util import seg_loss, IOStream
 import sklearn.metrics as metrics
 from torch.utils.data import random_split
+from numpy import savetxt
 
 import time
 
@@ -77,8 +78,10 @@ def train(args, io):
         #     data, label = torch.unsqueeze(data, 0), torch.unsqueeze(label, 0)
         
         for data, label in train_loader:
-            data, label = data.to(device), label.to(device).squeeze()
-            print(data.shape)
+            data = data.to(device)
+            # label = label.type(torch.LongTensor)
+            label = label.to(device)
+            # print(data.shape)
             data = data.permute(0, 2, 1)
             batch_size = args.batch_size
 
@@ -93,8 +96,8 @@ def train(args, io):
             #     continue
 
             opt.zero_grad()
-            print(logits.shape)
-            print(label.shape)
+            #print(logits.shape)
+           # print(label.shape)
             # logits, label = torch.cat(logits_, dim=-1), torch.cat(label_, dim=-1)
             loss = get_loss(logits, label)
             loss.backward()
@@ -113,18 +116,14 @@ def train(args, io):
         print('train total time is', total_time)
         outstr = 'Train %d, loss: %.6f, train acc: %.6f, train avg acc: %.6f' % (epoch,
                                                                                  train_loss*1.0/count,
-                                                                                 metrics.accuracy_score(
-                                                                                    train_true,
-                                                                                    train_pred),
-                                                                                 metrics.balanced_accuracy_score(
-                                                                                    train_true,
-                                                                                    train_pred))
+                                                                                 metrics.accuracy_score(train_true, train_pred),
+                                                                                 metrics.balanced_accuracy_score(train_true, train_pred))
         io.cprint(outstr)
 
         ####################
         # Test
         ####################
-        if epoch % 5 == 0:
+        if epoch % 2 == 0:
             test_loss = 0.0
             count = 0.0
             model.eval()
@@ -154,7 +153,7 @@ def train(args, io):
                 #     continue
 
                 # logits, label = torch.cat(logits_, dim=-1), torch.cat(label_, dim=-1)
-                print(logits)
+                #print(logits)
                 loss = get_loss(logits, label)
                 # logits_.clear()
                 # label_.clear()
@@ -180,7 +179,8 @@ def train(args, io):
 
 
 def test(args, io):
-    test_loader = DataLoader(Dales, num_workers=2,
+    dales = Dales()
+    test_loader = DataLoader(dales, num_workers=2,
                              batch_size=args.test_batch_size, shuffle=True, drop_last=False)
 
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -210,6 +210,7 @@ def test(args, io):
     test_acc = metrics.accuracy_score(test_true.reshape(-1), test_pred.reshape(-1))
     avg_per_class_acc = metrics.balanced_accuracy_score(test_true.reshape(-1), test_pred.reshape(-1))
     outstr = 'Test :: test acc: %.6f, test avg acc: %.6f'%(test_acc, avg_per_class_acc)
+    savetxt('label.csv', test_pred, delimiter=',')
     io.cprint(outstr)
 
 
@@ -218,7 +219,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Point Cloud Recognition')
     parser.add_argument('--exp_name', type=str, default='exp', metavar='N',
                         help='Name of the experiment')
-    parser.add_argument('--dataset', type=str, default='modelnet40', metavar='N',
+    parser.add_argument('--dataset', type=str, default='DALES', metavar='N',
                         choices=['modelnet40'])
     parser.add_argument('--batch_size', type=int, default=32, metavar='batch_size',
                         help='Size of batch)')
@@ -238,7 +239,7 @@ if __name__ == "__main__":
                         help='random seed (default: 1)')
     parser.add_argument('--eval', type=bool,  default=False,
                         help='evaluate the model')
-    parser.add_argument('--num_points', type=int, default=2048,     # Deleted
+    parser.add_argument('--num_points', type=int, default=4096,     # Deleted
                         help='num of points to use')
     parser.add_argument('--dropout', type=float, default=0.5,
                         help='dropout rate')

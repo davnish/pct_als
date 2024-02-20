@@ -7,38 +7,84 @@ import laspy
 import torch
 
 
+class Dales(Dataset):
+    def __init__(self, partition='train'):
+        self.data, self.label = load_data(partition)
 
-# def load_data(partition):
-#     # download()
-#     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-#     DATA_DIR = os.path.join(BASE_DIR, 'data')
-#     all_data = []
-#     all_label = []
-#     for h5_name in glob.glob(os.path.join(DATA_DIR, 'modelnet40_ply_hdf5_2048', 'ply_data_%s*.h5'%partition)):
-#         f = h5py.File(h5_name)
-#         data = f['data'].astype('float32')
-#         label = f['label'].astype('int64')
-#         # print(label)
-#         f.close()
-#         all_data.append(data)
-#         all_label.append(label)
-#     all_data = np.concatenate(all_data, axis=0)
-#     all_label = np.concatenate(all_label, axis=0)
-#     # print(all_data)
-#     return all_data, all_label
 
+    def __getitem__(self, item):
+        pointcloud = torch.tensor(self.data[item]).float()
+        label = torch.tensor(self.label[item])
+
+        return pointcloud, label
+
+    def __len__(self):
+        return self.data.shape[0]
+
+def las_label_replace(las):
+    las_classification = np.asarray(las.classification)
+    mapping = {1:0, 2:1, 3:2, 4:3, 5:4, 6:5, 7:6, 8:7}
+    for old, new in mapping.items():
+        las_classification[las_classification == old] = new
+    return las_classification
 
 def load_data(partition):
-    las = laspy.read("F:\\nischal\\p_c\\PCT_Pytorch\\data\\5085_54320.las")
-    # print(np.array(las.xyz))
-    return las.xyz[:14393344].reshape((4096, 3514 , 3)), np.array(las.classification)[:14393344].reshape((4096, 3514 , 1))
+    las = laspy.read("F:\\nischal\\p_c\pct_als\\data\\5140_54445.las")
+    las_classification = las_label_replace(las)
+    grid_size = 10
+    grid_point_clouds = {}
+    grid_point_clouds_label = {}
+    for point, label in zip(las.xyz, las_classification):
+        grid_x = int(point[0] / grid_size)
+        grid_y = int(point[1] / grid_size)
+
+        if (grid_x, grid_y) not in grid_point_clouds:
+            grid_point_clouds[(grid_x, grid_y)] = []
+            grid_point_clouds_label[(grid_x, grid_y)] = []
+        
+        grid_point_clouds[(grid_x, grid_y)].append(point)
+        grid_point_clouds_label[(grid_x, grid_y)].append(label)
+
+    # print(len(grid_point_clouds_label))
+    tiles = []
+    tiles_labels = []
+    for i, j in zip(grid_point_clouds.values(), grid_point_clouds_label.values()):
+        grid = i
+        len_grid = len(grid)
+        label = j
+        if(len_grid>100):
+            if(len_grid<4096):
+                for _ in range(4096-len_grid):
+                    grid.append(grid[0])
+                    label.append(label[0])
+            tiles.append(grid[:4096])
+            tiles_labels.append(label[:4096])
+
+    tiles_np = np.asarray(tiles)
+    # tiles_np_labels = np.expand_dims(np.asarray(tiles_labels), axis = 2)
+    tiles_np_labels = np.asarray(tiles_labels)
+    return tiles_np, tiles_np_labels
+
+def give_colors(las_xyz, las_label ,to_see = None, partition = 'test'):
+    to_what = [(0,255,255), (0,0,255), (0,255,0), (0,10,255), (255,255,0), (0,255,255), (10,255,255), (255, 0 ,255), (110,10,0)]
+    colors = np.zeros(las_xyz.shape)
+    if partition == 'train':
+        # to_what = np.array(to_what)
+        to_what = np.expand_dims(to_what, axis=1)
+        for i,c in enumerate(to_what):
+            colors += np.expand_dims((las_label == i), axis=1) * c
+    else:      
+        # To see the pcd data into visulization first we need to convert it into the a one shape array.  
+        # to_what = [(0,0,255), (0,255,0)]
+        colors[:,:] = to_what[0]
+        colors[0, :] = to_what[1]
 
 def random_point_dropout(pc, max_dropout_ratio=0.875):
     ''' batch_pc: BxNx3 '''
     # for b in range(batch_pc.shape[0]):
     dropout_ratio = np.random.random()*max_dropout_ratio # 0~0.875    
     drop_idx = np.where(np.random.random((pc.shape[0]))<=dropout_ratio)[0]
-    # print ('use random drop', len(drop_idx))
+    print ('use random drop', len(drop_idx))
 
     if len(drop_idx)>0:
         pc[drop_idx,:] = pc[0,:] # set to the first point
@@ -57,30 +103,15 @@ def jitter_pointcloud(pointcloud, sigma=0.01, clip=0.02):
     return pointcloud
 
 
-class Dales(Dataset):
-    def __init__(self, partition='train'):
-        self.data, self.label = load_data(partition)
-        self.partition = partition     
-        # self.data =    
-
-    def __getitem__(self, item):
-        pointcloud = torch.tensor(self.data[item]).float()
-        label = torch.tensor(self.label[item])
-
-        return pointcloud, label
-
-    def __len__(self):
-        return self.data.shape[0]
-
-from torch.utils.data import random_split
-
 if __name__ == '__main__':
     train = Dales()
     # print(train[10])
     # print(len(train) *0.9)
     # train_dataset, test_dataset = random_split(train, [0.9, 0.1])
     # test = ModelNet40(1024, 'test')
-    for data, label in train:
-        print(data.dtype)
-        print(label.shape)
-        break
+    # print(train[10, 1])
+    # for data, label in train:
+        
+    #     print(data.dtype)
+    #     print(label.shape)
+    #     break
