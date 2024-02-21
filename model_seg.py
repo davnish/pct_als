@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import torchinfo
 
 class Seg(nn.Module):
-    def __init__(self, args, part_num=8):
+    def __init__(self,args, part_num=8):
         super(Seg, self).__init__()
         self.part_num = part_num
         self.conv1 = nn.Conv1d(3, 128, kernel_size=1, bias=False)
@@ -13,12 +13,18 @@ class Seg(nn.Module):
         self.bn1 = nn.BatchNorm1d(128)
         self.bn2 = nn.BatchNorm1d(128)
 
-        self.sa1 = SA_Layer(128)
-        self.sa2 = SA_Layer(128)
-        self.sa3 = SA_Layer(128)
-        self.sa4 = SA_Layer(128)
+        # self.multiblocks = nn.Sequential(*[nn.ModuleList(torch.cat(*([SA_Layer(128) for _ in range(4)]), dim = 1)) for _ in range(4)])
+        self.blocks = nn.Sequential(*[MultiHeadedAttention(128) for _ in range(4)])
+        # self.block1 = MultiHeadedAttention(128)
+        # self.block2 = MultiHeadedAttention(128)
+        # self.block3 = MultiHeadedAttention(128)
+        # self.block4 = MultiHeadedAttention(128)
+        # self.sa1 = SA_Layer(128)
+        # self.sa2 = SA_Layer(128)
+        # self.sa3 = SA_Layer(128)
+        # self.sa4 = SA_Layer(128)
 
-        self.conv_fuse = nn.Sequential(nn.Conv1d(512, 1024, kernel_size=1, bias=False),
+        self.conv_fuse = nn.Sequential(nn.Conv1d(128, 1024, kernel_size=1, bias=False),
                                        nn.BatchNorm1d(1024),
                                        nn.LeakyReLU(negative_slope=0.2))
 
@@ -37,11 +43,12 @@ class Seg(nn.Module):
         batch_size, _, num_point = x.size()  # B, D, N
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
-        x1 = self.sa1(x)
-        x2 = self.sa2(x1)
-        x3 = self.sa3(x2)
-        x4 = self.sa4(x3)
-        x = torch.cat([x1, x2, x3, x4], dim=1)
+        # x1 = self.block1(x)
+        # x2 = self.block2(x1)
+        # x3 = self.block3(x2)
+        # x4 = self.block4(x3)
+        x = self.blocks(x)
+        # x = torch.cat([x1, x2, x3, x4], dim=1)
         x = self.conv_fuse(x)  # B, 1024, N
         x_max = F.adaptive_max_pool1d(x, 1)     # B,D???
         x_avg = F.adaptive_avg_pool1d(x, 1)     # B,D
@@ -54,17 +61,25 @@ class Seg(nn.Module):
         x = F.relu(self.bns2(self.convs2(x)))
         x = self.convs3(x)
         return x
-
-
+    
+class MultiHeadedAttention(nn.Module):
+    
+    def __init__(self, channels, num_heads = 4):
+        super().__init__()
+        self.heads = nn.ModuleList([SA_Layer(channels) for _ in range(num_heads)])
+    def forward(self, x):
+        out = torch.cat([h(x) for h in self.heads], dim = 1)
+        return out 
+    
 class SA_Layer(nn.Module):
     def __init__(self, channels):
         super(SA_Layer, self).__init__()
         self.q_conv = nn.Conv1d(channels, channels // 4, kernel_size=1, bias=False)
         self.k_conv = nn.Conv1d(channels, channels // 4, kernel_size=1, bias=False)
         self.q_conv.weight = self.k_conv.weight
-        self.v_conv = nn.Conv1d(channels, channels, kernel_size=1)
-        self.trans_conv = nn.Conv1d(channels, channels, kernel_size=1)
-        self.after_norm = nn.BatchNorm1d(channels)
+        self.v_conv = nn.Conv1d(channels, channels // 4, kernel_size=1)
+        # self.trans_conv = nn.Conv1d(channels, channels // 4, kernel_size=1)
+        self.after_norm = nn.BatchNorm1d((channels // 4))
         self.act = nn.ReLU()
         self.softmax = nn.Softmax(dim=-1)
 
@@ -80,11 +95,11 @@ class SA_Layer(nn.Module):
         attention = attention / (1e-9 + attention.sum(dim=1, keepdim=True))
         # b, c, n
         x_r = torch.bmm(x_v, attention)
-        x_r = self.act(self.after_norm(self.trans_conv(x - x_r)))
-        x = x + x_r
+        # x_r = self.act(self.after_norm(self.trans_conv(x - x_r)))
+        x = self.act(self.after_norm(x))
+        # x = x + x_r
         return x
 
-# @torch.no_grad()
 def get_loss(logics, labels):
     '''
     logics: B*one_hot*N
@@ -96,8 +111,3 @@ def get_loss(logics, labels):
     labels = labels.contiguous().view(-1)  # B*N,
     loss = F.cross_entropy(logics, labels)
     return loss
-
-# logits = torch.rand((3,9))
-# labels = torch.tensor([1, 2, 3])
-# loss = F.cross_entropy(logits, labels)
-# print(loss)

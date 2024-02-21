@@ -33,7 +33,7 @@ def _init_():
 
 def train(args, io):
     dales = Dales()
-    train_dataset, test_dataset = random_split(dales, [0.9, 0.1])
+    train_dataset, test_dataset = random_split(dales, [0.8, 0.2])
     train_loader = DataLoader(train_dataset, num_workers=2,
                               batch_size=args.batch_size, shuffle=True, drop_last=True)
     test_loader = DataLoader(test_dataset, num_workers=2,
@@ -123,7 +123,7 @@ def train(args, io):
         ####################
         # Test
         ####################
-        if epoch % 2 == 0:
+        if epoch % 5 == 0:
             test_loss = 0.0
             count = 0.0
             model.eval()
@@ -221,9 +221,9 @@ if __name__ == "__main__":
                         help='Name of the experiment')
     parser.add_argument('--dataset', type=str, default='DALES', metavar='N',
                         choices=['modelnet40'])
-    parser.add_argument('--batch_size', type=int, default=32, metavar='batch_size',
+    parser.add_argument('--batch_size', type=int, default=4, metavar='batch_size',
                         help='Size of batch)')
-    parser.add_argument('--test_batch_size', type=int, default=16, metavar='batch_size',
+    parser.add_argument('--test_batch_size', type=int, default=8, metavar='batch_size',
                         help='Size of batch)')
     parser.add_argument('--epochs', type=int, default=1, metavar='N',
                         help='number of episode to train ')

@@ -1,10 +1,10 @@
-import os
-import glob
-import h5py
 import numpy as np
 from torch.utils.data import Dataset
 import laspy
 import torch
+from torch.utils.data import DataLoader
+from torch.utils.data import random_split
+
 
 
 class Dales(Dataset):
@@ -31,7 +31,7 @@ def las_label_replace(las):
 def load_data(partition):
     las = laspy.read("F:\\nischal\\p_c\pct_als\\data\\5140_54445.las")
     las_classification = las_label_replace(las)
-    grid_size = 10
+    grid_size = 20
     grid_point_clouds = {}
     grid_point_clouds_label = {}
     for point, label in zip(las.xyz, las_classification):
@@ -104,7 +104,14 @@ def jitter_pointcloud(pointcloud, sigma=0.01, clip=0.02):
 
 
 if __name__ == '__main__':
-    train = Dales()
+    train = Dales()  
+    train_dataset, test_dataset = random_split(train, [0.8, 0.2])
+    train_loader = DataLoader(train_dataset, num_workers=2,
+                              batch_size=8, shuffle=True, drop_last=True)
+    test_loader = DataLoader(test_dataset, num_workers=2,
+                             batch_size=8, shuffle=False, drop_last=False)
+    print(len(train_loader))
+    print(len(test_loader))
     # print(train[10])
     # print(len(train) *0.9)
     # train_dataset, test_dataset = random_split(train, [0.9, 0.1])

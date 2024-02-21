@@ -9,7 +9,7 @@ las = laspy.read("F:\\nischal\\p_c\pct_als\\data\\5140_54445.las") # Reading las
 
 
 def griding():
-    grid_size = 10
+    grid_size = 20
     grid_point_clouds = {}
     grid_point_clouds_label = {}
     for point, label in zip(las.xyz, las.classification):
@@ -74,8 +74,8 @@ def give_colors(las_xyz, las_label ,to_see = None, partition = 'test'):
 
 
 pcd = o3d.geometry.PointCloud()
-pcd.points = o3d.utility.Vector3dVector(las_xyz[0])
-pcd.colors = o3d.utility.Vector3dVector(give_colors(las_xyz[0], las_label[0], partition = 'train'))
+pcd.points = o3d.utility.Vector3dVector(las_xyz[10])
+pcd.colors = o3d.utility.Vector3dVector(give_colors(las_xyz[10], las_label[10], partition = 'train'))
 o3d.visualization.draw_geometries([pcd])
 
 # data = [[] for _ in range(400)]
