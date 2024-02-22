@@ -221,7 +221,7 @@ if __name__ == "__main__":
                         help='Name of the experiment')
     parser.add_argument('--dataset', type=str, default='DALES', metavar='N',
                         choices=['modelnet40'])
-    parser.add_argument('--batch_size', type=int, default=4, metavar='batch_size',
+    parser.add_argument('--batch_size', type=int, default=8, metavar='batch_size',
                         help='Size of batch)')
     parser.add_argument('--test_batch_size', type=int, default=8, metavar='batch_size',
                         help='Size of batch)')

@@ -79,7 +79,7 @@ class SA_Layer(nn.Module):
         self.q_conv.weight = self.k_conv.weight
         self.v_conv = nn.Conv1d(channels, channels // 4, kernel_size=1)
         # self.trans_conv = nn.Conv1d(channels, channels // 4, kernel_size=1)
-        self.after_norm = nn.BatchNorm1d((channels // 4))
+        self.after_norm = nn.BatchNorm1d(channels // 4)
         self.act = nn.ReLU()
         self.softmax = nn.Softmax(dim=-1)
 
@@ -96,7 +96,7 @@ class SA_Layer(nn.Module):
         # b, c, n
         x_r = torch.bmm(x_v, attention)
         # x_r = self.act(self.after_norm(self.trans_conv(x - x_r)))
-        x = self.act(self.after_norm(x))
+        x = self.act(self.after_norm(x_r))
         # x = x + x_r
         return x
 
