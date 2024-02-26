@@ -43,7 +43,7 @@ def train(args, io):
     device = torch.device("cuda" if args.cuda else "cpu")
 
     model = Seg(args).to(device)
-    print(str(model))
+    # print(str(model))
     model = nn.DataParallel(model)
     print('num_points:%s, batch_size:%s, %s' % (args.num_points, args.batch_size, args.test_batch_size))
 
@@ -109,9 +109,9 @@ def train(args, io):
         # Test
         ####################
         if epoch % 5 == 0:
+            model.eval()
             test_loss = 0.0
             count = 0.0
-            model.eval()
             test_pred = []
             test_true = []
             total_time = 0.0
@@ -125,6 +125,9 @@ def train(args, io):
                 start_time = time.time()
                 logits = model(data)
                 end_time = time.time()
+                # print(logits.shape)
+                print(label.shape)
+                # break
                 total_time += (end_time - start_time)
 
                 loss = get_loss(logits, label)

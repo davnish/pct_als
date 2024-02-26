@@ -64,10 +64,9 @@ def give_colors(las_xyz, las_label ,to_see = None, partition = 'test'):
     return colors.reshape(-1, 3)
 
 torch.manual_seed(42)
-a = torch.randint(10, (1,5,5))
-b = a.max(dim = 1)
-print(a)
-print(b[1])
+a = torch.randn(8, 4096, 4)
+# print(a)
+print(a.max(dim = -1)[1].shape)
 
 
 # las.classification

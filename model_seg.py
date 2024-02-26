@@ -15,14 +15,6 @@ class Seg(nn.Module):
 
         # self.multiblocks = nn.Sequential(*[nn.ModuleList(torch.cat(*([SA_Layer(128) for _ in range(4)]), dim = 1)) for _ in range(4)])
         self.blocks = nn.Sequential(*[blocks() for _ in range(2)])
-        # self.block1 = MultiHeadedAttention(128)
-        # self.block2 = MultiHeadedAttention(128)
-        # self.block3 = MultiHeadedAttention(128)
-        # self.block4 = MultiHeadedAttention(128)
-        # self.sa1 = SA_Layer(128)
-        # self.sa2 = SA_Layer(128)
-        # self.sa3 = SA_Layer(128)
-        # self.sa4 = SA_Layer(128)
 
         self.conv_fuse = nn.Sequential(nn.Conv1d(128, 1024, kernel_size=1, bias=False),
                                        nn.BatchNorm1d(1024),
@@ -44,10 +36,7 @@ class Seg(nn.Module):
         batch_size, _, num_point = x.size()  # B, D, N
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
-        # x1 = self.block1(x)
-        # x2 = self.block2(x1)
-        # x3 = self.block3(x2)
-        # x4 = self.block4(x3)
+
         x = self.blocks(x)
         # x = torch.cat([x1, x2, x3, x4], dim=1)
         x = self.conv_fuse(x)  # B, 1024, N
@@ -68,7 +57,11 @@ class blocks(nn.Module):
         super().__init__()
         self.multihead = MultiHeadedAttention(128)
         
-        self.trans_conv = nn.Conv1d(128, 128, kernel_size=1)
+        self.trans_conv = nn.Sequential(
+            nn.Conv1d(128, 512, kernel_size=1),
+            nn.ReLU(),
+            nn.Conv1d(512, 128, kernel_size=1)
+        )
         self.act = nn.ReLU()
         self.ln1 = nn.BatchNorm1d(128)
         self.ln2 = nn.BatchNorm1d(128)
