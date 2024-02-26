@@ -34,17 +34,14 @@ def _init_():
 def train(args, io):
     dales = Dales()
     train_dataset, test_dataset = random_split(dales, [0.8, 0.2])
-    train_loader = DataLoader(train_dataset, num_workers=2,
+    train_loader = DataLoader(train_dataset, num_workers=1,
                               batch_size=args.batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(test_dataset, num_workers=2,
+    test_loader = DataLoader(test_dataset, num_workers=1,
                              batch_size=args.test_batch_size, shuffle=False, drop_last=False)
-    # train_data = S3DIS(5, args.num_points, partition='train')
-    # test_data = S3DIS(5, args.num_points, partition='val')
+
 
     device = torch.device("cuda" if args.cuda else "cpu")
 
-    # class_weights = torch.from_numpy(DP.get_class_weights('S3DIS')).to(device)
-    # class_weights = class_weights.float()
     model = Seg(args).to(device)
     print(str(model))
     model = nn.DataParallel(model)
@@ -56,31 +53,26 @@ def train(args, io):
     else:
         print("Use Adam")
         opt = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-4)
-
+  
     scheduler = CosineAnnealingLR(opt, args.epochs, eta_min=args.lr)
 
     criterion = seg_loss
     best_test_acc = 0
 
     for epoch in range(args.epochs):
+        model.train()
         train_loss = 0.0
         count = 0.0
-        model.train()
         train_pred = []
         train_true = []
-        idx = 0
+
         total_time = 0.0
-        # logits_ = []
-        # label_ = []
-        # for i in range(train_data.__len__()):
-        #     data, label = train_data.__getitem__(i)
-        #     data, label = torch.from_numpy(data).to(device), torch.from_numpy(label).to(device).squeeze()
-        #     data, label = torch.unsqueeze(data, 0), torch.unsqueeze(label, 0)
+
         
         for data, label in train_loader:
-            data = data.to(device)
-            # label = label.type(torch.LongTensor)
-            label = label.to(device)
+            data, label = data.to(device), label.to(device)
+
+            
             # print(data.shape)
             data = data.permute(0, 2, 1)
             batch_size = args.batch_size
@@ -89,25 +81,18 @@ def train(args, io):
             logits = model(data)
             end_time = time.time()
             total_time += (end_time - start_time)
-            # logits_.append(logits)
-            # label_.append(label)
-
-            # if len(logits_) < batch_size:
-            #     continue
 
             opt.zero_grad()
-            #print(logits.shape)
-           # print(label.shape)
-            # logits, label = torch.cat(logits_, dim=-1), torch.cat(label_, dim=-1)
+
             loss = get_loss(logits, label)
             loss.backward()
 
-            # logits_.clear()
-            # label_.clear()
+
             opt.step()
             scheduler.step()
 
             preds = logits.max(dim=1)[1]
+
             count += batch_size
             train_loss += loss.item() * batch_size
             train_true += label.cpu().numpy().tolist()[0]
@@ -131,12 +116,7 @@ def train(args, io):
             test_true = []
             total_time = 0.0
             idx = 0
-            # logits_ = []
-            # label_ = []
-            # for i in range(test_data.__len__()):
-            #     data, label = test_data.__getitem__(i)
-            #     data, label = torch.from_numpy(data).to(device), torch.from_numpy(label).to(device).squeeze()
-            #     data, label = torch.unsqueeze(data, 0), torch.unsqueeze(label, 0)
+
             for data, label in test_loader:
                 data, label = data.to(device), label.to(device).squeeze()
                 data = data.permute(0, 2, 1)
@@ -146,17 +126,9 @@ def train(args, io):
                 logits = model(data)
                 end_time = time.time()
                 total_time += (end_time - start_time)
-                # logits_.append(logits)
-                # label_.append(label)
 
-                # if len(logits_) < batch_size:
-                #     continue
-
-                # logits, label = torch.cat(logits_, dim=-1), torch.cat(label_, dim=-1)
-                #print(logits)
                 loss = get_loss(logits, label)
-                # logits_.clear()
-                # label_.clear()
+
 
                 preds = logits.max(dim=1)[1]
                 count += batch_size

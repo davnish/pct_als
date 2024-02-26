@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 
-las = laspy.read("F:\\nischal\\p_c\pct_als\\data\\5140_54445.las") # Reading las file
+# las = laspy.read("F:\\nischal\\p_c\pct_als\\data\\5140_54445.las") # Reading las file
 
 
 def griding():
@@ -43,7 +43,8 @@ def griding():
     tiles_np_labels = np.asarray(tiles_labels)
     return tiles_np, tiles_np_labels
 
-las_xyz, las_label = griding()
+
+# print(las_xyz.shape)
 
 def give_colors(las_xyz, las_label ,to_see = None, partition = 'test'):
     to_what = [(0,255,255), (0,0,255), (0,255,0), (0,10,255), (255,255,0), (0,255,255), (10,255,255), (255, 0 ,255), (110,10,0)]
@@ -62,8 +63,11 @@ def give_colors(las_xyz, las_label ,to_see = None, partition = 'test'):
 
     return colors.reshape(-1, 3)
 
-
-
+torch.manual_seed(42)
+a = torch.randint(10, (1,5,5))
+b = a.max(dim = 1)
+print(a)
+print(b[1])
 
 
 # las.classification
@@ -72,11 +76,12 @@ def give_colors(las_xyz, las_label ,to_see = None, partition = 'test'):
 # for i in grid_point_clouds.keys():
 #     cnt += 1
 
-
-pcd = o3d.geometry.PointCloud()
-pcd.points = o3d.utility.Vector3dVector(las_xyz[10])
-pcd.colors = o3d.utility.Vector3dVector(give_colors(las_xyz[10], las_label[10], partition = 'train'))
-o3d.visualization.draw_geometries([pcd])
+def visualize():
+    las_xyz, las_label = griding()
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(las_xyz[10])
+    pcd.colors = o3d.utility.Vector3dVector(give_colors(las_xyz[10], las_label[10], partition = 'train'))
+    o3d.visualization.draw_geometries([pcd])
 
 # data = [[] for _ in range(400)]
 # cnt_grid = 0

@@ -14,7 +14,7 @@ class Seg(nn.Module):
         self.bn2 = nn.BatchNorm1d(128)
 
         # self.multiblocks = nn.Sequential(*[nn.ModuleList(torch.cat(*([SA_Layer(128) for _ in range(4)]), dim = 1)) for _ in range(4)])
-        self.blocks = nn.Sequential(*[MultiHeadedAttention(128) for _ in range(4)])
+        self.blocks = nn.Sequential(*[blocks() for _ in range(2)])
         # self.block1 = MultiHeadedAttention(128)
         # self.block2 = MultiHeadedAttention(128)
         # self.block3 = MultiHeadedAttention(128)
@@ -39,6 +39,7 @@ class Seg(nn.Module):
         self.bns1 = nn.BatchNorm1d(512)
         self.bns2 = nn.BatchNorm1d(256)
 
+
     def forward(self, x):
         batch_size, _, num_point = x.size()  # B, D, N
         x = F.relu(self.bn1(self.conv1(x)))
@@ -61,6 +62,20 @@ class Seg(nn.Module):
         x = F.relu(self.bns2(self.convs2(x)))
         x = self.convs3(x)
         return x
+
+class blocks(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.multihead = MultiHeadedAttention(128)
+        
+        self.trans_conv = nn.Conv1d(128, 128, kernel_size=1)
+        self.act = nn.ReLU()
+        self.ln1 = nn.BatchNorm1d(128)
+        self.ln2 = nn.BatchNorm1d(128)
+        self.ln3 = nn.BatchNorm1d(128)
+    def forward(self, x):
+        x_r = self.act(self.ln2(self.trans_conv(self.ln1(x - self.multihead(self.ln3(x))))))
+        return x + x_r
     
 class MultiHeadedAttention(nn.Module):
     
@@ -95,10 +110,12 @@ class SA_Layer(nn.Module):
         attention = attention / (1e-9 + attention.sum(dim=1, keepdim=True))
         # b, c, n
         x_r = torch.bmm(x_v, attention)
+
+
         # x_r = self.act(self.after_norm(self.trans_conv(x - x_r)))
-        x = self.act(self.after_norm(x_r))
+        # x = self.act(self.after_norm(x_r))
         # x = x + x_r
-        return x
+        return x_r
 
 def get_loss(logics, labels):
     '''

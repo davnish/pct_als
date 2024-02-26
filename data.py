@@ -104,21 +104,20 @@ def jitter_pointcloud(pointcloud, sigma=0.01, clip=0.02):
 
 
 if __name__ == '__main__':
-    train = Dales()  
-    train_dataset, test_dataset = random_split(train, [0.8, 0.2])
-    train_loader = DataLoader(train_dataset, num_workers=2,
-                              batch_size=8, shuffle=True, drop_last=True)
-    test_loader = DataLoader(test_dataset, num_workers=2,
-                             batch_size=8, shuffle=False, drop_last=False)
-    print(len(train_loader))
-    print(len(test_loader))
+    from torch.utils.data import DataLoader
+    import time
+    train = Dales()
     # print(train[10])
     # print(len(train) *0.9)
     # train_dataset, test_dataset = random_split(train, [0.9, 0.1])
-    # test = ModelNet40(1024, 'test')
-    # print(train[10, 1])
-    # for data, label in train:
-        
-    #     print(data.dtype)
-    #     print(label.shape)
-    #     break
+    data_loader = DataLoader(train, shuffle=True, num_workers=1, batch_size=64)
+    
+    start = time.time()
+    for data, label in data_loader:
+        st = time.time()
+        data, label = data.to('cuda'), label.to('cuda')
+        ed = time.time()
+        print(ed-st)
+    end = time.time()
+
+    print(f'Total_time: {end-start}')
