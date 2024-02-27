@@ -3,9 +3,11 @@ import open3d as o3d
 import h5py
 import numpy as np
 import torch
+import statistics as st
+import matplotlib.pyplot as plt
 
 
-# las = laspy.read("F:\\nischal\\p_c\pct_als\\data\\5140_54445.las") # Reading las file
+las = laspy.read("F:\\nischal\\p_c\pct_als\\data\\5140_54445.las") # Reading las file
 
 
 def griding():
@@ -23,15 +25,31 @@ def griding():
         grid_point_clouds[(grid_x, grid_y)].append(point)
         grid_point_clouds_label[(grid_x, grid_y)].append(label)
 
-    print(len(grid_point_clouds_label))
+    # print(grid_point_clouds_label.shape)
+
     tiles = []
     tiles_labels = []
-    for i, j in zip(grid_point_clouds.values(), grid_point_clouds_label.values()):
-        grid = i
+    # men = st.mean((grid_point_clouds.values()))
+    # men = 0
+    # for i in grid_point_clouds.values():
+    #     men += len(i)
+
+    # print(men/len(grid_point_clouds.values()))
+
+    total_points = [len(i) for i in grid_point_clouds.values()]
+    min_points_grid = (max(total_points) - min(total_points)) * 0.1
+    # plt.plot(total_points)
+    # plt.show()
+
+    # average_points_per_cloud = total_points / len(grid_point_clouds)
+    # print(average_points_per_cloud)
+
+    for grid, label in zip(grid_point_clouds.values(), grid_point_clouds_label.values()):
+
         len_grid = len(grid)
-        label = j
-        if(len_grid>100):
-            if(len_grid<4096):
+
+        if(len_grid - min(total_points)>min_points_grid): # This is for excluding points which are at the boundry at the edges of the tiles
+            if(len_grid<4096): # This is for if the points in the grid are less then the required points for making the grid
                 for _ in range(4096-len_grid):
                     grid.append(grid[0])
                     label.append(label[0])
@@ -41,9 +59,11 @@ def griding():
     tiles_np = np.asarray(tiles)
     # tiles_np_labels = np.expand_dims(np.asarray(tiles_labels), axis = 2)
     tiles_np_labels = np.asarray(tiles_labels)
+    print(tiles_np.shape)
     return tiles_np, tiles_np_labels
 
 
+# griding()
 # print(las_xyz.shape)
 
 def give_colors(las_xyz, las_label ,to_see = None, partition = 'test'):
@@ -63,10 +83,10 @@ def give_colors(las_xyz, las_label ,to_see = None, partition = 'test'):
 
     return colors.reshape(-1, 3)
 
-torch.manual_seed(42)
-a = torch.randn(8, 4096, 4)
-# print(a)
-print(a.max(dim = -1)[1].shape)
+# torch.manual_seed(42)
+# a = torch.randn(8, 4096, 4)
+# # print(a)
+# print(a.max(dim = -1)[1].shape)
 
 
 # las.classification
@@ -78,9 +98,11 @@ print(a.max(dim = -1)[1].shape)
 def visualize():
     las_xyz, las_label = griding()
     pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(las_xyz[10])
-    pcd.colors = o3d.utility.Vector3dVector(give_colors(las_xyz[10], las_label[10], partition = 'train'))
+    pcd.points = o3d.utility.Vector3dVector(las_xyz[0])
+    pcd.colors = o3d.utility.Vector3dVector(give_colors(las_xyz[0], las_label[0], partition = 'train'))
     o3d.visualization.draw_geometries([pcd])
+
+visualize()
 
 # data = [[] for _ in range(400)]
 # cnt_grid = 0
