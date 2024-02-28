@@ -95,14 +95,13 @@ def give_colors(las_xyz, las_label ,to_see = None, partition = 'test'):
 # for i in grid_point_clouds.keys():
 #     cnt += 1
 
-def visualize():
-    las_xyz, las_label = griding()
+def visualize(las_xyz, las_label):
+    # las_xyz, las_label = griding()
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(las_xyz[0])
-    pcd.colors = o3d.utility.Vector3dVector(give_colors(las_xyz[0], las_label[0], partition = 'train'))
+    pcd.colors = o3d.utility.Vector3dVector(give_colors(las_xyz[0], las_label[:4096], partition = 'train'))
     o3d.visualization.draw_geometries([pcd])
 
-visualize()
 
 # data = [[] for _ in range(400)]
 # cnt_grid = 0
@@ -173,3 +172,26 @@ visualize()
 # print(give_colors(pcd, to_see=1))
 
 # print(np.asarray(pcd.colors))
+
+if __name__ == "__main__":
+    # Splitting the data
+    # from data import Dales
+    # from torch.utils.data import random_split, DataLoader
+    # _dales = Dales(25, 2048)
+    # train_dataset, test_dataset = random_split(_dales, [0.9, 0.1])
+
+    # # Loading the data
+    # train_loader = DataLoader(train_dataset, batch_size = 1, shuffle = True)
+    # test_loader = DataLoader(test_dataset, batch_size = 1, shuffle = False)
+    # for data, label in test_loader:
+    #     visualize(data[0], label)
+    # print(np.unique(las.classification, return_counts=True)[1])
+    raw = np.load('raw.npz')
+    data = raw['data1']
+    y_true = raw['y_true1']
+    y_preds = raw['y_preds1']
+    print(data.shape, y_true.shape, y_preds.shape)
+    print(np.unique(y_true), np.unique(y_preds))
+    visualize(data, y_preds)
+
+

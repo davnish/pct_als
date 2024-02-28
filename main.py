@@ -12,16 +12,16 @@ torch.manual_seed(42)
 
 # Hyperparameter----
 
-grid_size = 25 #The size of the grid from 500mx500m
-points_taken = 2048 #points taken per each grid
+grid_size = 20 #The size of the grid from 500mx500m
+points_taken = 4096 #points taken per each grid
 batch_size = 2
 lr = 1e-2
-epoch = 50
+epoch = 30
 eval_train_test = 10
 n_embd = 128
 n_heads = 4
-n_layers = 1
-step_size = 20 # Reduction of Learning at how many epochs
+n_layers = 2
+step_size = 30 # Reduction of Learning at how many epochs
 batch_eval_inter = 100
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # eval_test = 10
@@ -38,29 +38,26 @@ test_loader = DataLoader(test_dataset, batch_size = batch_size, shuffle = False)
 
 # Initialize the model
 model = pct(n_embd, n_heads, n_layers)
-model = model.to(device)
 
-# loss ,Optimizer, Scheduler
+# loss, Optimizer, Scheduler
 loss_fn = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr = lr)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size = step_size, gamma = 0.1)
+model = model.to(device)
 
 
 #Training the model
-def train_loop(i, see_batch_loss = False):
+def train_loop(loader,see_batch_loss = False):
     model.train()
     total_loss = 0
     y_true = []
     y_preds = []
-    for batch, (data, label) in enumerate(train_loader):
-        data , label = data.to(device), label.to(device)
-
+    for batch, (data, label) in enumerate(loader):
+        data, label = data.to(device), label.to(device)
 
         logits = model(data)
 
-
         optimizer.zero_grad()
-
 
         loss = loss_fn(logits.reshape(-1, logits.size(-1)), label.view(-1))
 
@@ -78,44 +75,44 @@ def train_loop(i, see_batch_loss = False):
             if batch%batch_eval_inter == 0:
                 print(f'Batch_Loss_{batch} : {loss.item()}')
 
-    if i%eval_train_test==0:
-        val_loss, val_acc = test_loop(test_loader)
-        print(f'Epoch {i+1}: train_loss: {(total_loss/len(train_loader)):.4f} | train_acc: {(accuracy_score(y_true, y_preds)):.4f} | val_loss: {val_loss:.4f} | val_acc: {val_acc:.4f} | lr: {scheduler.get_last_lr()}')
+    return total_loss/len(loader), accuracy_score(y_true, y_preds)
         
 
-
+@torch.no_grad()
 def test_loop(loader):
     model.eval()
-    with torch.no_grad():
-        total_loss = 0
-        y_true = []
-        y_preds = []
-        for data, label in loader:
-            data , label = data.to(device), label.to(device)
-            logits = model(data)
+    total_loss = 0
+    y_true = []
+    y_preds = []
+    for data, label in loader:
+        data, label = data.to(device), label.to(device)
+        logits = model(data)
 
 
-            loss = loss_fn(logits.reshape(-1, logits.size(-1)), label.view(-1))
-            
-            total_loss+=loss.item()
-            preds = logits.max(dim = -1)[1].view(-1)
-            
-            y_true.extend(label.view(-1).cpu().tolist())
-            y_preds.extend(preds.detach().cpu().tolist())
-
-    return total_loss/len(loader), accuracy_score(y_true, y_preds)
+        loss = loss_fn(logits.reshape(-1, logits.size(-1)), label.view(-1))
+        
+        total_loss+=loss.item()
+        preds = logits.max(dim = -1)[1].view(-1)
+        
+        y_true.extend(label.view(-1).cpu().tolist())
+        y_preds.extend(preds.detach().cpu().tolist())
+        # np.savez('raw.npz', data1 = data.cpu(), y_true1 = y_true, y_preds1 = y_preds)
+        # break
     # print(f'val_loss: {total_loss/len(test_loader)}, val_acc: {accuracy_score(y_true, y_preds)}')  
+    print(np.unique(y_preds))
+    return total_loss/len(loader), accuracy_score(y_true, y_preds)
 
 if __name__ == '__main__':
-    print(f'{epoch = }, {n_embd = }, {n_layers = }, {n_heads = }, {batch_size = }, {lr = }, {grid_size = }, {points_taken = }')
+    print(f'{grid_size = }, {points_taken = }, {epoch = }, {n_embd = }, {n_layers = }, {n_heads = }, {batch_size = }, {lr = }')
     start = time.time()
     for epoch in range(epoch): 
-        train_loop(epoch)
+        train_loss, train_acc = train_loop(train_loader)
+        val_loss, val_acc = test_loop(test_loader)
         scheduler.step()
-
+        if epoch%eval_train_test==0:
+            print(f'Epoch {epoch}: train_loss: {train_loss:.4f} | train_acc: {train_acc:.4f} | val_loss: {val_loss:.4f} | val_acc: {val_acc:.4f} | lr: {scheduler.get_last_lr()}')
         # break
         
     end = time.time()
 
     print(f'Total_time: {end-start}')
-

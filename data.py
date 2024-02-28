@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 import os
 import numpy as np
 import laspy
-import open3d as o3d
+# import open3d as o3d
 
 class Dales(Dataset):
     def __init__(self, grid_size, points_taken, partition='train'):
@@ -30,12 +30,12 @@ def las_label_replace(las):
 
 def load_data(grid_size, points_taken):
     # path = "data"
-    if os.path.exists(f'data\\train_test_{grid_size}_{points_taken}.npz'): # this starts from the system's path
-        tiles = np.load(f'data\\train_test_{grid_size}_{points_taken}.npz')
+    if os.path.exists(os.path.join("data", f"train_test_{grid_size}_{points_taken}.npz")): # this starts from the system's path
+        tiles = np.load(os.path.join("data", f"train_test_{grid_size}_{points_taken}.npz"))
         tiles_np = tiles['x']
         tiles_np_labels = tiles['y']
     else:
-        las = laspy.read("F:\\nischal\\p_c\\pct_als\\data\\5140_54445.las")
+        las = laspy.read(os.path.join("data", "5140_54445.las"))
         las_classification = las_label_replace(las)
         # grid_size = grid_size
         grid_point_clouds = {}
@@ -73,21 +73,25 @@ def load_data(grid_size, points_taken):
         tiles_np = np.asarray(tiles)
 
         tiles_np_labels = np.asarray(tiles_labels)
-        np.savez(f'data\\train_test_{grid_size}_{points_taken}.npz', x = tiles_np, y = tiles_np_labels)
+        np.savez(os.path.join("data", f"train_test_{grid_size}_{points_taken}.npz"), x = tiles_np, y = tiles_np_labels)
 
     return tiles_np, tiles_np_labels
 
-def visualize():
-    las_xyz, _ = load_data(10, 4096)
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(las_xyz[0])
-    # pcd.colors = o3d.utility.Vector3dVector(give_colors(las_xyz[0], las_label[0], partition = 'train'))
-    o3d.visualization.draw_geometries([pcd])
+# def visualize():
+#     las_xyz, _ = load_data(25, 1028)
+#     pcd = o3d.geometry.PointCloud()
+#     pcd.points = o3d.utility.Vector3dVector(las_xyz[0])
+#     # pcd.colors = o3d.utility.Vector3dVector(give_colors(las_xyz[0], las_label[0], partition = 'train'))
+#     o3d.visualization.draw_geometries([pcd])
 
 
 
 if __name__ == '__main__':
     from torch.utils.data import DataLoader
-    visualize()
+    from torch.utils.data import random_split
+    # visualize()
+    train = Dales(20, 2048)
+    _, test = random_split(train, [0.9, 0.1])
+    print(len(test))
     # a = DataLoader(train, shuffle = True, batch_size = 8)
     # print()
