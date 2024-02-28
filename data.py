@@ -4,12 +4,13 @@ import laspy
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import random_split
+import os
 
 
 
 class Dales(Dataset):
-    def __init__(self, partition='train'):
-        self.data, self.label = load_data(partition)
+    def __init__(self, grid_size=10, points_taken=2048, partition='train'):
+        self.data, self.label = load_data(grid_size, points_taken)
 
 
     def __getitem__(self, item):
@@ -28,80 +29,54 @@ def las_label_replace(las):
         las_classification[las_classification == old] = new
     return las_classification
 
-def load_data(partition):
-    las = laspy.read("F:\\nischal\\p_c\pct_als\\data\\5140_54445.las")
-    las_classification = las_label_replace(las)
-    grid_size = 20
-    grid_point_clouds = {}
-    grid_point_clouds_label = {}
-    for point, label in zip(las.xyz, las_classification):
-        grid_x = int(point[0] / grid_size)
-        grid_y = int(point[1] / grid_size)
+def load_data(grid_size, points_taken):
+    # path = "data"
+    if os.path.exists(os.path.join("data", f"train_test_{grid_size}_{points_taken}.npz")): # this starts from the system's path
+        tiles = np.load(os.path.join("data", f"train_test_{grid_size}_{points_taken}.npz"))
+        tiles_np = tiles['x']
+        tiles_np_labels = tiles['y']
+    else:
+        las = laspy.read(os.path.join("data", "5140_54445.las"))
+        las_classification = las_label_replace(las)
+        # grid_size = grid_size
+        grid_point_clouds = {}
+        grid_point_clouds_label = {}
+        for point, label in zip(las.xyz, las_classification):
+            grid_x = int(point[0] / grid_size)
+            grid_y = int(point[1] / grid_size)
 
-        if (grid_x, grid_y) not in grid_point_clouds:
-            grid_point_clouds[(grid_x, grid_y)] = []
-            grid_point_clouds_label[(grid_x, grid_y)] = []
-        
-        grid_point_clouds[(grid_x, grid_y)].append(point)
-        grid_point_clouds_label[(grid_x, grid_y)].append(label)
+            if (grid_x, grid_y) not in grid_point_clouds:
+                grid_point_clouds[(grid_x, grid_y)] = []
+                grid_point_clouds_label[(grid_x, grid_y)] = []
+            
+            grid_point_clouds[(grid_x, grid_y)].append(point)
+            grid_point_clouds_label[(grid_x, grid_y)].append(label)
 
-    # print(len(grid_point_clouds_label))
-    tiles = []
-    tiles_labels = []
-    for i, j in zip(grid_point_clouds.values(), grid_point_clouds_label.values()):
-        grid = i
-        len_grid = len(grid)
-        label = j
-        if(len_grid>100):
-            if(len_grid<4096):
-                for _ in range(4096-len_grid):
-                    grid.append(grid[0])
-                    label.append(label[0])
-            tiles.append(grid[:4096])
-            tiles_labels.append(label[:4096])
+        tiles = []
+        tiles_labels = []
 
-    tiles_np = np.asarray(tiles)
-    # tiles_np_labels = np.expand_dims(np.asarray(tiles_labels), axis = 2)
-    tiles_np_labels = np.asarray(tiles_labels)
+        grid_lengths = [len(i) for i in grid_point_clouds.values()]
+        min_grid_points = (max(grid_lengths) - min(grid_lengths)) * 0.1
+        min_points = min(grid_lengths)
+
+        for grid, label in zip(grid_point_clouds.values(), grid_point_clouds_label.values()):
+
+            len_grid = len(grid)
+
+            if(len_grid - min_points>min_grid_points): # This is for excluding points which are at the boundry at the edges of the tiles
+                if(len_grid<points_taken): # This is for if the points in the grid are less then the required points for making the grid
+                    for _ in range(points_taken-len_grid):
+                        grid.append(grid[0])
+                        label.append(label[0])
+                tiles.append(grid[:points_taken])
+                tiles_labels.append(label[:points_taken])
+
+        tiles_np = np.asarray(tiles)
+
+        tiles_np_labels = np.asarray(tiles_labels)
+        # np.savez(os.path.join("data", f"train_test_{grid_size}_{points_taken}.npz"), x = tiles_np, y = tiles_np_labels)
+
     return tiles_np, tiles_np_labels
-
-def give_colors(las_xyz, las_label ,to_see = None, partition = 'test'):
-    to_what = [(0,255,255), (0,0,255), (0,255,0), (0,10,255), (255,255,0), (0,255,255), (10,255,255), (255, 0 ,255), (110,10,0)]
-    colors = np.zeros(las_xyz.shape)
-    if partition == 'train':
-        # to_what = np.array(to_what)
-        to_what = np.expand_dims(to_what, axis=1)
-        for i,c in enumerate(to_what):
-            colors += np.expand_dims((las_label == i), axis=1) * c
-    else:      
-        # To see the pcd data into visulization first we need to convert it into the a one shape array.  
-        # to_what = [(0,0,255), (0,255,0)]
-        colors[:,:] = to_what[0]
-        colors[0, :] = to_what[1]
-
-def random_point_dropout(pc, max_dropout_ratio=0.875):
-    ''' batch_pc: BxNx3 '''
-    # for b in range(batch_pc.shape[0]):
-    dropout_ratio = np.random.random()*max_dropout_ratio # 0~0.875    
-    drop_idx = np.where(np.random.random((pc.shape[0]))<=dropout_ratio)[0]
-    print ('use random drop', len(drop_idx))
-
-    if len(drop_idx)>0:
-        pc[drop_idx,:] = pc[0,:] # set to the first point
-    return pc
-
-def translate_pointcloud(pointcloud):
-    xyz1 = np.random.uniform(low=2./3., high=3./2., size=[3])
-    xyz2 = np.random.uniform(low=-0.2, high=0.2, size=[3])
-       
-    translated_pointcloud = np.add(np.multiply(pointcloud, xyz1), xyz2).astype('float32')
-    return translated_pointcloud
-
-def jitter_pointcloud(pointcloud, sigma=0.01, clip=0.02):
-    N, C = pointcloud.shape
-    pointcloud += np.clip(sigma * np.random.randn(N, C), -1*clip, clip)
-    return pointcloud
-
 
 if __name__ == '__main__':
     from torch.utils.data import DataLoader

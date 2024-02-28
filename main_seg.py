@@ -97,7 +97,8 @@ def train(args, io):
             train_loss += loss.item() * batch_size
             train_true += label.cpu().numpy().tolist()[0]
             train_pred += preds.detach().cpu().numpy().tolist()[0]
-
+        print(np.unique(train_pred))
+        
         print('train total time is', total_time)
         outstr = 'Train %d, loss: %.6f, train acc: %.6f, train avg acc: %.6f' % (epoch,
                                                                                  train_loss*1.0/count,
@@ -126,7 +127,7 @@ def train(args, io):
                 logits = model(data)
                 end_time = time.time()
                 # print(logits.shape)
-                print(label.shape)
+                # print(label.shape)
                 # break
                 total_time += (end_time - start_time)
 
@@ -196,9 +197,9 @@ if __name__ == "__main__":
                         help='Name of the experiment')
     parser.add_argument('--dataset', type=str, default='DALES', metavar='N',
                         choices=['modelnet40'])
-    parser.add_argument('--batch_size', type=int, default=8, metavar='batch_size',
+    parser.add_argument('--batch_size', type=int, default=2, metavar='batch_size',
                         help='Size of batch)')
-    parser.add_argument('--test_batch_size', type=int, default=8, metavar='batch_size',
+    parser.add_argument('--test_batch_size', type=int, default=2, metavar='batch_size',
                         help='Size of batch)')
     parser.add_argument('--epochs', type=int, default=1, metavar='N',
                         help='number of episode to train ')
@@ -214,7 +215,7 @@ if __name__ == "__main__":
                         help='random seed (default: 1)')
     parser.add_argument('--eval', type=bool,  default=False,
                         help='evaluate the model')
-    parser.add_argument('--num_points', type=int, default=4096,     # Deleted
+    parser.add_argument('--num_points', type=int, default=2048,     # Deleted
                         help='num of points to use')
     parser.add_argument('--dropout', type=float, default=0.5,
                         help='dropout rate')
