@@ -37,7 +37,7 @@ class blocks(nn.Module):
         )
     def forward(self, x):
         multihead = x + self.multihead(self.ln1(x))
-        return multihead + self.ffw(self.ln2(multihead))
+        return  multihead + self.ffw(self.ln2(multihead))
 
 class multihead_attention(nn.Module):
     def __init__(self, n_embd, head_size, n_heads):

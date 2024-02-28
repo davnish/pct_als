@@ -187,11 +187,14 @@ if __name__ == "__main__":
     #     visualize(data[0], label)
     # print(np.unique(las.classification, return_counts=True)[1])
     raw = np.load('raw.npz')
-    data = raw['data1']
-    y_true = raw['y_true1']
-    y_preds = raw['y_preds1']
+    data = raw['data']
+    y_true = raw['y_true']
+    y_preds = raw['y_preds']
+    logits = raw['logits']
     print(data.shape, y_true.shape, y_preds.shape)
-    print(np.unique(y_true), np.unique(y_preds))
-    visualize(data, y_preds)
+    print(np.unique(y_true), np.unique(y_preds), data.shape, np.unique(logits.argmax(axis = -1)))
+    print(logits)
+    print(logits.argmax(axis = -1))
+    # visualize(data, y_preds)
 
 

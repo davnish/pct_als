@@ -33,8 +33,8 @@ _dales = Dales(grid_size, points_taken)
 train_dataset, test_dataset = random_split(_dales, [0.9, 0.1])
 
 # Loading the data
-train_loader = DataLoader(train_dataset, batch_size = batch_size, shuffle = True)
-test_loader = DataLoader(test_dataset, batch_size = batch_size, shuffle = False)
+train_loader = DataLoader(train_dataset, batch_size = batch_size, shuffle = True, drop_last=True)
+test_loader = DataLoader(test_dataset, batch_size = batch_size, shuffle = False, drop_last=True)
 
 # Initialize the model
 model = pct(n_embd, n_heads, n_layers)
@@ -96,7 +96,7 @@ def test_loop(loader):
         
         y_true.extend(label.view(-1).cpu().tolist())
         y_preds.extend(preds.detach().cpu().tolist())
-        # np.savez('raw.npz', data1 = data.cpu(), y_true1 = y_true, y_preds1 = y_preds)
+        # np.savez('raw.npz', data = data.cpu(), logits = logits.cpu(), y_true = y_true, y_preds = y_preds)
         # break
     # print(f'val_loss: {total_loss/len(test_loader)}, val_acc: {accuracy_score(y_true, y_preds)}')  
     print(np.unique(y_preds))
@@ -109,6 +109,7 @@ if __name__ == '__main__':
         train_loss, train_acc = train_loop(train_loader)
         val_loss, val_acc = test_loop(test_loader)
         scheduler.step()
+        
         if epoch%eval_train_test==0:
             print(f'Epoch {epoch}: train_loss: {train_loss:.4f} | train_acc: {train_acc:.4f} | val_loss: {val_loss:.4f} | val_acc: {val_acc:.4f} | lr: {scheduler.get_last_lr()}')
         # break
